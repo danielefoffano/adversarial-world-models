@@ -206,22 +206,33 @@ class ValueGaussianDiffusion(nn.Module):
 
         return sample
 
-    def p_losses(self, x_start, cond, t):
+    # def p_losses(self, x_start, cond, t):
+    #     noise = torch.randn_like(x_start)
+
+    #     x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
+    #     x_noisy = apply_conditioning_value(x_noisy, cond, self.action_dim)
+
+    #     x_recon = self.model(x_noisy, cond, t)
+    #     x_recon = apply_conditioning_value(x_recon, cond, self.action_dim)
+
+    #     assert noise.shape == x_recon.shape
+
+    #     if self.predict_epsilon:
+    #         loss, info = self.loss_fn(x_recon, noise)
+    #     else:
+    #         loss, info = self.loss_fn(x_recon, x_start)
+
+    #     return loss, info
+
+    def p_losses(self, x_start, cond, target, t):
         noise = torch.randn_like(x_start)
 
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         x_noisy = apply_conditioning_value(x_noisy, cond, self.action_dim)
 
-        x_recon = self.model(x_noisy, cond, t)
-        x_recon = apply_conditioning_value(x_recon, cond, self.action_dim)
+        pred = self.model(x_noisy, cond, t)
 
-        assert noise.shape == x_recon.shape
-
-        if self.predict_epsilon:
-            loss, info = self.loss_fn(x_recon, noise)
-        else:
-            loss, info = self.loss_fn(x_recon, x_start)
-
+        loss, info = self.loss_fn(pred, target)
         return loss, info
 
     def loss(self, x, *args):
@@ -231,6 +242,13 @@ class ValueGaussianDiffusion(nn.Module):
 
     def forward(self, cond, *args, **kwargs):
         return self.conditional_sample(cond, *args, **kwargs)
+    
+    def gradients(self, x, *args):
+        x.requires_grad_()
+        y = self.model.forward(x, *args).squeeze(dim=-1)
+        grad = torch.autograd.grad([y.sum()], [x])[0]
+        x.detach()
+        return y, grad
 
 
 class ValueDiffusion(ValueGaussianDiffusion):

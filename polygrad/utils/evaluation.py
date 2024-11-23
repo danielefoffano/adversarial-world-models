@@ -74,6 +74,7 @@ def evaluate_policy(
     avg_return = np.mean(np.array(returns))
     min_return = np.min(np.array(returns))
     max_return = np.max(np.array(returns))
+    std_return = np.std(np.array(returns))
     avg_ep_len = np.mean(np.array(ep_lens))
     min_ep_len = np.min(np.array(ep_lens))
     max_ep_len = np.max(np.array(ep_lens))
@@ -82,6 +83,7 @@ def evaluate_policy(
     metrics["avg_return"] = avg_return
     metrics["min_return"] = min_return
     metrics["max_return"] = max_return
+    metrics["std_return"] = std_return
     metrics["avg_ep_len"] = avg_ep_len
     metrics["min_ep_len"] = min_ep_len
     metrics["max_ep_len"] = max_ep_len

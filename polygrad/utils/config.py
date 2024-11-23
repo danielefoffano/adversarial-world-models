@@ -197,7 +197,11 @@ def create_configs(args, env):
         transition_dim=observation_dim + action_dim,
         cond_dim=observation_dim,
         dim_mults=args.values["dim_mults"],
-        device=args.values["device"],
+        attention=False,
+        scale_obs=args.scale_obs,
+        hidden_dim=args.hidden_dim,
+        num_layers=args.num_layers,
+        embed_dim=args.embed_dim,
     )
     
     value_diffusion_config = utils.Config(

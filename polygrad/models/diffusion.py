@@ -269,30 +269,3 @@ class GaussianDiffusion(nn.Module):
 
     def forward(self, cond, *args, **kwargs):
         return self.conditional_sample(cond, *args, **kwargs)
-
-# class ValueDiffusion(GaussianDiffusion):
-
-#     def p_losses(self, x_start, cond, target, t):
-#         noise = torch.randn_like(x_start)
-
-#         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-#         x_noisy = apply_conditioning(x_noisy, cond, self.action_dim)
-
-#         pred = self.model(x_noisy, cond, t)
-
-#         loss, info = self.loss_fn(pred, target)
-#         return loss, info
-
-#     def forward(self, x, cond, t):
-#         return self.model(x, cond, t)
-    
-#     def forward_grad(self, x, cond, t):
-#         output = self.model(x, cond, t)
-#         return output.squeeze(dim=-1)
-
-#     def gradients(self, x, *args):
-#         x.requires_grad_()
-#         y = self.forward_grad(x, *args)
-#         grad = torch.autograd.grad([y.sum()], [x])[0]
-#         x.detach()
-#         return y, grad

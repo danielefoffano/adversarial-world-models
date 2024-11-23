@@ -126,7 +126,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-python310-polygrad/*
+python310-adversarial/*
 
 # Spyder project settings
 .spyderproject

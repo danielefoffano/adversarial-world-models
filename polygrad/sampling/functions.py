@@ -37,7 +37,6 @@ def clip_change(old, new, tol=1.0):
     new = old + torch.clamp((new - old), min=-tol, max=tol)
     return new
 
-
 def policy_guided_sample_fn(
     model,
     x,
@@ -67,15 +66,6 @@ def policy_guided_sample_fn(
         with torch.autocast(device_type="cuda", dtype=torch.float16):
             prediction = model.model(x, act_scale, timesteps)
         x_recon = model.predict_start_from_noise(x, t=timesteps, noise=prediction)
-        #DF-CHANGE
-        # temp_s = x_recon[:, :, : model.observation_dim].detach()
-        # x_value = torch.cat((act_noisy, temp_s), 2)
-        # x_value.requires_grad = True
-        # t_tensor = torch.full((temp_s.shape[0],), t, device=temp_s.device, dtype=torch.long)
-        # y, value_grad = value_f.gradients(x_value, cond, t_tensor)
-        # normalized_grad = value_grad/torch.linalg.vector_norm(value_grad, dim=1, keepdim=True)
-        # obs_recon = (temp_s - 0.00001 * normalized_grad[:,:,model.action_dim:]).detach()
-        # x_recon[:, :, : model.observation_dim] = obs_recon
         x_recon = apply_conditioning(x_recon, cond, model.observation_dim)
 
     model_mean, _, model_log_variance = model.q_posterior(

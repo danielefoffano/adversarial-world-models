@@ -163,3 +163,73 @@ class ResidualMLPDenoiser(nn.Module):
         y = self.residual_mlp(x)
         y = y.reshape(b, h, d)
         return y
+    
+class ResidualMLPDenoiserValue(nn.Module):
+    def __init__(
+            self,
+            horizon,
+            transition_dim,
+            cond_dim,
+            dim_mults,
+            attention,
+            scale_obs=1.0,
+            dropout=None,
+            embed_dim: int=128,
+            hidden_dim: int=1024,
+            num_layers: int=6,
+            learned_sinusoidal_cond: bool=False,
+            random_fourier_features: bool=True,
+            learned_sinusoidal_dim: int=16,
+            activation: str="relu",
+            layer_norm: bool=True,
+    ):
+        super().__init__()
+        d_in = horizon * transition_dim 
+        out_dim = 1
+        cond_dim = horizon * cond_dim
+        embed_dim = max(d_in + cond_dim, embed_dim)
+        self.residual_mlp = ResidualMLP(
+            input_dim=embed_dim,
+            width=hidden_dim,
+            depth=num_layers,
+            output_dim=out_dim,
+            activation=activation,
+            layer_norm=layer_norm,
+            dropout=dropout,
+        )
+
+        self.scale_obs = scale_obs
+        self.proj = nn.Linear(d_in, embed_dim)
+
+        # time embeddings
+        self.random_or_learned_sinusoidal_cond = learned_sinusoidal_cond or random_fourier_features
+        if self.random_or_learned_sinusoidal_cond:
+            sinu_pos_emb = RandomOrLearnedSinusoidalPosEmb(learned_sinusoidal_dim, random_fourier_features)
+            fourier_dim = learned_sinusoidal_dim + 1
+        else:
+            sinu_pos_emb = SinusoidalPosEmb(embed_dim)
+            fourier_dim = embed_dim
+
+        self.time_mlp = nn.Sequential(
+            sinu_pos_emb,
+            nn.Linear(fourier_dim, embed_dim),
+            nn.SiLU(),
+            nn.Linear(embed_dim, embed_dim)
+        )
+
+    def forward(
+            self,
+            traj: torch.Tensor,
+            cond: dict,
+            timesteps: torch.Tensor,
+    ) -> torch.Tensor:
+        # traj[:, 1:, :-1] = traj[:, 1:, :-1] * self.scale_obs # scale obs
+        # traj[:, :, -1:] = traj[:, :, -1:] * self.scale_obs # scale rew
+        x = traj
+        b, h, d = traj.shape
+        time_embed = self.time_mlp(timesteps)
+        x = x.reshape(b, -1)
+        x = self.proj(x) + time_embed
+        y = self.residual_mlp(x)
+        #y = y.reshape(b, h, d)
+        return y

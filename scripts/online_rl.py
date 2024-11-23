@@ -179,3 +179,5 @@ while step < args.n_environment_steps:
 
     wandb.log(metrics, step=step)
     step += 1
+
+agent.save(args.savepath, step)

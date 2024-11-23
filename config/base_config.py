@@ -120,8 +120,8 @@ base = {
     
     # Value diffusion model
     'values': {
-        'model': 'models.ValueFunction',
-        'diffusion': 'models.ValueDiffusion',
+        'model': 'models.ResidualMLPDenoiserValue',
+        'diffusion': 'models.ValueGaussianDiffusion',
         'horizon': 10,
         'n_diffusion_steps': 128,
         'dim_mults': (1, 2, 4, 8),
