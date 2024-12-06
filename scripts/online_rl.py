@@ -15,6 +15,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Parser(utils.Parser):
     config: str = "config.simple_maze"
+    seed: int = 1
+    run_number: int = 0
 
 
 args = Parser().parse_args()

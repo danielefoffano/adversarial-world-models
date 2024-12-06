@@ -3,6 +3,7 @@ from polygrad.utils.envs import create_env
 import torch
 import numpy as np
 import polygrad.utils as utils
+import csv
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -51,33 +52,31 @@ path = "./logs/Hopper-v3/default_2024-11-21-17:57:35_seed0/"
 step = 999999
 agent.load(path, step)
 
-masses = np.linspace(2.0, 4.7, 20)
-for mass in masses:
-    eval_env.sim.model.body_mass[1] = mass
-    eval_metrics = evaluate_policy(
-                ac.forward_actor,
-                eval_env,
-                device,
-                step,
-                dataset,
-                use_mean=True,
-                n_episodes=100,
-                renderer=renderer,
-            )
-    all_metrics.append(eval_metrics)
-    print(f"Metrics for mass {eval_env.sim.model.body_mass[1]}")
-    print(eval_metrics)
+masses = np.linspace(0.5, 4.7, 50)
+frictions = np.linspace(0.4, 2.5, 50)
+csv_file_path = path+"/all_fric_avg_returns.csv"
+
+with open(csv_file_path, mode='w', newline='') as csv_file:
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(["Friction", "Avg_Return", "Std_Return"])
+    # for mass in masses:
+    #     eval_env.sim.model.body_mass[1] = mass
+    for friction in frictions:
+        eval_env.sim.model.geom_friction[0][0] = friction
+        eval_metrics = evaluate_policy(
+                    ac.forward_actor,
+                    eval_env,
+                    device,
+                    step,
+                    dataset,
+                    use_mean=True,
+                    n_episodes=100,
+                    renderer=renderer,
+                )
+        all_metrics.append(eval_metrics)
+        csv_writer.writerow([friction, eval_metrics["avg_return"], eval_metrics["std_return"]])
+        #print(f"Metrics for mass {eval_env.sim.model.body_mass[1]}")
+        print(f"Metrics for friction {eval_env.sim.model.geom_friction[0][0]}")
+        print(eval_metrics)
 
 print("done")
-
-import matplotlib.pyplot as plt
-
-means = [metric["avg_return"] for metric in all_metrics]
-min_ret = [metric["min_return"] for metric in all_metrics]
-max_ret = [metric["max_return"] for metric in all_metrics]
-
-fig, ax = plt.subplots()
-ax.plot(masses, means)
-ax.set(xlabel="mass", ylabel="cumulative return", title="Hopper-v3")
-ax.grid()
-fig.savefig("./logs/Hopper-v3/default_2024-11-21-17:57:35_seed0/HopperPlot.pdf")
