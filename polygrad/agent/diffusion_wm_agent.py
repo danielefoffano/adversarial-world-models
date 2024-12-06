@@ -276,11 +276,11 @@ class DiffusionWMAgent(nn.Module):
         )
         return metrics
 
-    def save(self, path, step):
+    def save(self, path, step, run=0):
         """Save the actor critic, diffusion model and current dataset."""
 
-        ac_path = join(path, f"step-{step}-ac.pt")
-        diffusion_path = join(path, f"step-{step}-diffusion.pt")
+        ac_path = join(path, f"step-{step}-ac--{run}.pt")
+        diffusion_path = join(path, f"step-{step}-diffusion--{run}.pt")
         torch.save(self.ac.state_dict(), ac_path)
         torch.save(self.diffusion_model.state_dict(), diffusion_path)
         return

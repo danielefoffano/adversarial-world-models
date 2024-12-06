@@ -67,7 +67,8 @@ class Parser(Tap):
         if not hasattr(args, 'config'): return args
         args = self.read_config(args, experiment)
         self.eval_fstrings(args)
-        self.set_seed(args)
+        #self.set_seed(args)
+        set_seed(args.seed)
         self.get_commit(args)
         self.set_loadbase(args)
         self.generate_exp_name(args)

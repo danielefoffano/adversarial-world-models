@@ -25,6 +25,8 @@ expl_env = create_env(args.env_name, args.suite)
 eval_env = create_env(args.env_name, args.suite)
 random_episodes = utils.rl.random_exploration(args.n_prefill_steps, expl_env)
 
+run_nr = args.run_number
+print(f"Run number {run_nr}")
 print("Seed", args.seed)
 utils.set_all_seeds(args.seed)
 
@@ -165,7 +167,7 @@ while step < args.n_environment_steps:
 
     if args.save_freq is not None:
         if step % args.save_freq == 0:
-            agent.save(args.savepath, step)
+            agent.save(args.savepath, step, run=run_nr)
 
     if step % args.eval_interval == 0:
         eval_metrics = evaluate_policy(
@@ -182,4 +184,4 @@ while step < args.n_environment_steps:
     wandb.log(metrics, step=step)
     step += 1
 
-agent.save(args.savepath, step)
+agent.save(args.savepath, step, run=run_nr)
