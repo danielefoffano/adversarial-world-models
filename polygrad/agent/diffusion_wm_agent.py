@@ -285,15 +285,20 @@ class DiffusionWMAgent(nn.Module):
         torch.save(self.diffusion_model.state_dict(), diffusion_path)
         return
 
-    def load(self, path, step, load_a2c=True, load_diffusion=True, load_dataset=True):
+    def load(self, path, step, load_a2c=True, load_diffusion=True, load_dataset=True, run=None):
         """Load the actor critic and diffusion model."""
 
+        if run is not None:
+            last_part = f"--{run}.pt"
+        else:
+            last_part = ".pt"
+
         if load_a2c:
-            ac_path = join(path, f"step-{step}-ac.pt")
+            ac_path = join(path, f"step-{step}-ac"+last_part)
             self.ac.load_state_dict(torch.load(ac_path, map_location=self.device))
 
         if load_diffusion:
-            diffusion_path = join(path, f"step-{step}-diffusion.pt")
+            diffusion_path = join(path, f"step-{step}-diffusion"+last_part)
             self.diffusion_model.load_state_dict(
                 torch.load(diffusion_path, map_location=self.device)
             )

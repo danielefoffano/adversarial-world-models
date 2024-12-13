@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--config","config.online_rl.hopper", "--seed", "12", "--run_number", "1"]
+            "args": ["--config","config.online_rl.hopper", "--seed", "1000", "--run_number", "4"]
         }
     ]
 }

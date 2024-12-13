@@ -11,9 +11,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # ----------------------------------- setup -----------------------------------#
 # -----------------------------------------------------------------------------#
 
-
 class Parser(utils.Parser):
     config: str = "config.simple_maze"
+    seed: int = 1
+    run_number: int = 0
 
 
 args = Parser().parse_args()
@@ -22,9 +23,10 @@ expl_env = create_env(args.env_name, args.suite)
 eval_env = create_env(args.env_name, args.suite)
 random_episodes = utils.rl.random_exploration(args.n_prefill_steps, expl_env)
 
+run_nr = args.run_number
+print(f"Run number {run_nr}")
 print("Seed", args.seed)
 utils.set_all_seeds(args.seed)
-all_metrics = []
 # load all config params
 
 configs = utils.create_configs(args, eval_env)
@@ -49,20 +51,21 @@ agent = configs["agent_config"](
 )
 
 path = "./logs/Hopper-v3/default_2024-11-21-17:57:35_seed0/"
-step = 999999
-agent.load(path, step)
+step = 1000000
+run = 1
+agent.load(path, step, run = run)
 
 masses = np.linspace(0.5, 4.7, 50)
-frictions = np.linspace(0.4, 2.5, 50)
-csv_file_path = path+"/all_fric_avg_returns.csv"
+frictions = np.linspace(2.5, 0.4, 50)
+csv_file_path = path+"/all_mass_avg_returns.csv"
 
 with open(csv_file_path, mode='w', newline='') as csv_file:
     csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(["Friction", "Avg_Return", "Std_Return"])
-    # for mass in masses:
-    #     eval_env.sim.model.body_mass[1] = mass
-    for friction in frictions:
-        eval_env.sim.model.geom_friction[0][0] = friction
+    csv_writer.writerow(["Mass", "Avg_Return", "Std_Return"])
+    for mass in masses:
+        eval_env.sim.model.body_mass[1] = mass
+    # for friction in frictions:
+    #     eval_env.sim.model.geom_friction[0][0] = friction
         eval_metrics = evaluate_policy(
                     ac.forward_actor,
                     eval_env,
@@ -73,10 +76,10 @@ with open(csv_file_path, mode='w', newline='') as csv_file:
                     n_episodes=100,
                     renderer=renderer,
                 )
-        all_metrics.append(eval_metrics)
-        csv_writer.writerow([friction, eval_metrics["avg_return"], eval_metrics["std_return"]])
-        #print(f"Metrics for mass {eval_env.sim.model.body_mass[1]}")
-        print(f"Metrics for friction {eval_env.sim.model.geom_friction[0][0]}")
+        #all_metrics.append(eval_metrics)
+        csv_writer.writerow([mass, eval_metrics["avg_return"], eval_metrics["std_return"]])
+        print(f"Metrics for mass {eval_env.sim.model.body_mass[1]}")
+        #print(f"Metrics for friction {eval_env.sim.model.geom_friction[0][0]}")
         print(eval_metrics)
 
 print("done")

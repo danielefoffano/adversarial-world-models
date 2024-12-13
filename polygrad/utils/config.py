@@ -190,19 +190,29 @@ def create_configs(args, env):
         linesearch_ratio=args.linesearch_ratio,
     )
 
-    value_model_config = utils.Config(
-        args.values["model"],
-        savepath=(args.savepath, 'value_model_config.pkl'),
-        horizon=args.values["horizon"],
-        transition_dim=observation_dim + action_dim,
-        cond_dim=observation_dim,
-        dim_mults=args.values["dim_mults"],
-        attention=False,
-        scale_obs=args.scale_obs,
-        hidden_dim=args.hidden_dim,
-        num_layers=args.num_layers,
-        embed_dim=args.embed_dim,
-    )
+    if args.values["model"] == 'models.ValueFunction':
+        value_model_config = utils.Config(
+            args.values["model"],
+            savepath=(args.savepath, 'value_model_config.pkl'),
+            horizon=args.values["horizon"],
+            transition_dim=observation_dim + action_dim,
+            cond_dim=observation_dim,
+            dim_mults=args.values["dim_mults"],
+        )
+    else:
+        value_model_config = utils.Config(
+            args.values["model"],
+            savepath=(args.savepath, 'value_model_config.pkl'),
+            horizon=args.values["horizon"],
+            transition_dim=observation_dim + action_dim,
+            cond_dim=observation_dim,
+            dim_mults=args.values["dim_mults"],
+            attention=False,
+            scale_obs=args.scale_obs,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.num_layers,
+            embed_dim=args.embed_dim,
+        )
     
     value_diffusion_config = utils.Config(
         args.values["diffusion"],

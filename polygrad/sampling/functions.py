@@ -105,10 +105,13 @@ def policy_guided_sample_fn(
         return model_mean, act_noisy, metrics
 
     #DF-CHANGE
+    model_log_variance_g = extract(model.posterior_log_variance_clipped, timesteps, x.shape)
+    model_std_g = torch.exp(0.5*model_log_variance_g)
+
     x_value = torch.cat((act_noisy, guide_states), 2)
     x_value.requires_grad = True
-    t_tensor = torch.full((guide_states.shape[0],), t, device=guide_states.device, dtype=torch.long)
-    y, value_grad = value_f.gradients(x_value, cond, t_tensor)
+    #t_tensor = torch.full((guide_states.shape[0],), t, device=guide_states.device, dtype=torch.long)
+    y, value_grad = value_f.gradients(x_value, cond, timesteps)
 
     #Adversarial update observations. Gradient shape batch_size x horizon x act_dim+obs_dim
     #Norm of gradient by trajectory. shape: batch_size
