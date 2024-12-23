@@ -119,7 +119,24 @@ def policy_guided_sample_fn(
     #   Normalize each feature using the other features in its same trajectory -> trajectory independent
     #   If we want to make it trajectory dependent we can take average across batch?
     normalized_grad = value_grad/torch.linalg.vector_norm(value_grad, dim=1, keepdim=True)
-    obs_recon = (guide_states - 0.00001 * normalized_grad[:,:,model.action_dim:]).detach()
+
+    n_dim = guide_states[0].shape[0]
+    p_dim = guide_states[0].shape[1]
+
+    G = value_grad[:,:,model.action_dim:]
+    U = torch.eye(n_dim, device=x.device)*(model_std[0][0][0].item() ** 2)
+    V = torch.eye(p_dim, device = x.device)*(model_std[0][0][0].item() ** 2)
+
+    U_inv = torch.inverse(U)
+    V_inv = torch.inverse(V)
+
+    UGV = torch.einsum('ij,bjk,kl->bil', U, G, V)
+    UGV_T = UGV.transpose(-2, -1)
+    result_matrices = torch.einsum('ij, bjk, kl, bkm->bim', V_inv, UGV_T, U_inv, UGV)
+    result_traces = torch.einsum('bii->b', result_matrices)
+    result_traces = result_traces.view(result_traces.shape[0], 1, 1)
+
+    obs_recon = (guide_states - result_traces * normalized_grad[:,:,model.action_dim:]).detach()
     x_recon[:, :, : model.observation_dim] = obs_recon
     x_recon = apply_conditioning(x_recon, cond, model.observation_dim)
     model_mean, _, model_log_variance = model.q_posterior(

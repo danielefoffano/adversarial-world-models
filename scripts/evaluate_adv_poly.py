@@ -52,12 +52,12 @@ agent = configs["agent_config"](
 
 path = "./logs/Hopper-v3/default_2024-11-21-17:57:35_seed0/"
 step = 1000000
-run = 1
+run = run_nr
 agent.load(path, step, run = run)
 
 masses = np.linspace(0.5, 4.7, 50)
 frictions = np.linspace(2.5, 0.4, 50)
-csv_file_path = path+"/all_mass_avg_returns.csv"
+csv_file_path = path+ f"/all_mass_avg_returns-{run_nr}.csv"
 
 with open(csv_file_path, mode='w', newline='') as csv_file:
     csv_writer = csv.writer(csv_file)
@@ -80,6 +80,30 @@ with open(csv_file_path, mode='w', newline='') as csv_file:
         csv_writer.writerow([mass, eval_metrics["avg_return"], eval_metrics["std_return"]])
         print(f"Metrics for mass {eval_env.sim.model.body_mass[1]}")
         #print(f"Metrics for friction {eval_env.sim.model.geom_friction[0][0]}")
+        print(eval_metrics)
+
+
+eval_env = create_env(args.env_name, args.suite)
+csv_file_path = path+ f"/all_friction_avg_returns-{run_nr}.csv"
+
+with open(csv_file_path, mode='w', newline='') as csv_file:
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(["Friction", "Avg_Return", "Std_Return"])
+    for friction in frictions:
+        eval_env.sim.model.geom_friction[0][0] = friction
+        eval_metrics = evaluate_policy(
+                    ac.forward_actor,
+                    eval_env,
+                    device,
+                    step,
+                    dataset,
+                    use_mean=True,
+                    n_episodes=100,
+                    renderer=renderer,
+                )
+        #all_metrics.append(eval_metrics)
+        csv_writer.writerow([friction, eval_metrics["avg_return"], eval_metrics["std_return"]])
+        print(f"Metrics for friction {eval_env.sim.model.geom_friction[0][0]}")
         print(eval_metrics)
 
 print("done")
