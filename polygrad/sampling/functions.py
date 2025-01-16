@@ -104,47 +104,6 @@ def policy_guided_sample_fn(
         }
         return model_mean, act_noisy, metrics
 
-    #DF-CHANGE
-    model_log_variance_g = extract(model.posterior_log_variance_clipped, timesteps, x.shape)
-    model_std_g = torch.exp(0.5*model_log_variance_g)
-
-    x_value = torch.cat((act_noisy, guide_states), 2)
-    x_value.requires_grad = True
-    #t_tensor = torch.full((guide_states.shape[0],), t, device=guide_states.device, dtype=torch.long)
-    y, value_grad = value_f.gradients(x_value, cond, timesteps)
-
-    #Adversarial update observations. Gradient shape batch_size x horizon x act_dim+obs_dim
-    #Norm of gradient by trajectory. shape: batch_size
-    #For each traj, norm by feature on the horizon. shape: batch_size x 1 x act_dim+obs_dim
-    #   Normalize each feature using the other features in its same trajectory -> trajectory independent
-    #   If we want to make it trajectory dependent we can take average across batch?
-    normalized_grad = value_grad/torch.linalg.vector_norm(value_grad, dim=1, keepdim=True)
-
-    n_dim = guide_states[0].shape[0]
-    p_dim = guide_states[0].shape[1]
-
-    G = value_grad[:,:,model.action_dim:]
-    U = torch.eye(n_dim, device=x.device)*(model_std[0][0][0].item() ** 2)
-    V = torch.eye(p_dim, device = x.device)*(model_std[0][0][0].item() ** 2)
-
-    U_inv = torch.inverse(U)
-    V_inv = torch.inverse(V)
-
-    UGV = torch.einsum('ij,bjk,kl->bil', U, G, V)
-    UGV_T = UGV.transpose(-2, -1)
-    result_matrices = torch.einsum('ij, bjk, kl, bkm->bim', V_inv, UGV_T, U_inv, UGV)
-    result_traces = torch.einsum('bii->b', result_matrices)
-    result_traces = result_traces.view(result_traces.shape[0], 1, 1)
-
-    obs_recon = (guide_states - result_traces * normalized_grad[:,:,model.action_dim:]).detach()
-    x_recon[:, :, : model.observation_dim] = obs_recon
-    x_recon = apply_conditioning(x_recon, cond, model.observation_dim)
-    model_mean, _, model_log_variance = model.q_posterior(
-        x_start=x_recon, x_t=x, t=timesteps
-    )
-    
-    #act_denoised = (act_denoised - 0.00001*normalized_grad[:,:,:model.action_dim]).detach()
-
     if guidance_type == "grad":
         # unnormalize as policy ouputs unnormalized actions
         act_noisy_unnormed = normalizer.unnormalize(act_noisy, "actions")
@@ -203,5 +162,54 @@ def policy_guided_sample_fn(
 
     elif guidance_type == "none":
         act_sample = act_noisy
+
+    #DF-CHANGE
+    x_t_next = model_mean + model_std * noise
+    #model_log_variance_g = extract(model.posterior_log_variance_clipped, timesteps, x.shape)
+    #model_std_g = torch.exp(0.5*model_log_variance_g)
+
+    x_value = torch.cat((act_noisy, guide_states), 2)
+    x_value.requires_grad = True
+    #t_tensor = torch.full((guide_states.shape[0],), t, device=guide_states.device, dtype=torch.long)
+    y, value_grad = value_f.gradients(x_value, cond, timesteps)
+
+    #Adversarial update observations. Gradient shape batch_size x horizon x act_dim+obs_dim
+    #Norm of gradient by trajectory. shape: batch_size
+    #For each traj, norm by feature on the horizon. shape: batch_size x 1 x act_dim+obs_dim
+    #   Normalize each feature using the other features in its same trajectory -> trajectory independent
+    #   If we want to make it trajectory dependent we can take average across batch?
+    normalized_grad = value_grad/torch.linalg.vector_norm(value_grad, dim=1, keepdim=True)
+
+    n_dim = guide_states[0].shape[0]
+    p_dim = guide_states[0].shape[1]
+
+    G = value_grad[:,:,model.action_dim:]
+    U = torch.eye(n_dim, device=x.device)*(model_std[0][0][0].item() ** 2)
+    V = torch.eye(p_dim, device = x.device)*(model_std[0][0][0].item() ** 2)
+
+    U_inv = torch.inverse(U)
+    V_inv = torch.inverse(V)
+
+    UGV = torch.einsum('ij,bjk,kl->bil', U, G, V)
+    UGV_T = UGV.transpose(-2, -1)
+    result_matrices = torch.einsum('ij, bjk, kl, bkm->bim', V_inv, UGV_T, U_inv, UGV)
+    denominator_traces = torch.einsum('bii->b', result_matrices)
+    
+    D = x_t_next[:,:,: model.observation_dim] - model_mean[:,:,: model.observation_dim]
+    numerator = torch.bmm(D.transpose(1,2), G)
+    numerator_traces = torch.einsum('bii->b', numerator)
+
+    all_c = numerator_traces/denominator_traces
+    all_c[denominator_traces > 0.0001] = torch.clamp(all_c[denominator_traces > 0.0001], min=0, max=1)
+    all_c[(denominator_traces <= 0.0001) & (numerator_traces < 0)] = torch.zeros_like(all_c[(denominator_traces <= 0.0001) & (numerator_traces < 0)])
+    all_c[(denominator_traces <= 0.0001) & (numerator_traces >= 0)] = 0.0001 + torch.zeros_like(all_c[(denominator_traces <= 0.0001) & (numerator_traces >= 0)])
+    result_traces_tensor = all_c.view(all_c.shape[0], 1, 1)
+
+    obs_recon = (guide_states - result_traces_tensor * normalized_grad[:,:,model.action_dim:]).detach()
+    x_recon[:, :, : model.observation_dim] = obs_recon
+    x_recon = apply_conditioning(x_recon, cond, model.observation_dim)
+    model_mean, _, model_log_variance = model.q_posterior(
+        x_start=x_recon, x_t=x, t=timesteps
+    )
 
     return model_mean + model_std * noise, act_sample, 0.0
