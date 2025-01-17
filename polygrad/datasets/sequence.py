@@ -127,7 +127,7 @@ class OnlineSequenceDataset(torch.utils.data.Dataset):
         actions = self.data_buffer["actions"][path_ind, start:end]
 
         #DF-CHANGE
-        value_obs = self.normalizer(self.data_buffer["observations"][path_ind, start:end], key)
+        value_obs = self.normalizer(self.data_buffer["observations"][path_ind, start:end], "observations")
         
         if "actions" in self.norm_keys:
             actions = self.normalizer(actions, "actions")
